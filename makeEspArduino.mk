@@ -55,10 +55,16 @@ SRC_GIT_VERSION = $(call git_description,$(dir $(SKETCH)))
 
 # esp8266 arduino directories
 ESP_GIT_VERSION = $(call git_description,$(ESP_ROOT))
-ESP_LIBS = $(ESP_ROOT)/libraries
+
+ESP_HW = $(ESP_ROOT)/hardware/esp8266
+HW_VERSION = $(shell ls $(ESP_HW) | head -1)
+HW_ROOT = $(ESP_HW)/$(HW_VERSION)
+ESP_LIBS = $(HW_ROOT)/libraries
 TOOLS_ROOT = $(ESP_ROOT)/tools
-TOOLS_BIN = $(TOOLS_ROOT)/xtensa-lx106-elf/bin
-SDK_ROOT = $(ESP_ROOT)/tools/sdk
+ESP_TOOL_VERSION = $(shell ls $(TOOLS_ROOT)/esptool | head -1)
+GCC_TOOL_VERSION = $(shell ls $(TOOLS_ROOT)/xtensa-lx106-elf-gcc | head -1)
+TOOLS_BIN = $(TOOLS_ROOT)/xtensa-lx106-elf-gcc/$(GCC_TOOL_VERSION)/bin
+SDK_ROOT = $(HW_ROOT)/tools/sdk
 
 # Directory for intermedite build files
 OBJ_DIR = $(BUILD_ROOT)/obj
@@ -70,9 +76,9 @@ CC = $(TOOLS_BIN)/xtensa-lx106-elf-gcc
 CPP = $(TOOLS_BIN)/xtensa-lx106-elf-g++
 LD =  $(CC)
 AR = $(TOOLS_BIN)/xtensa-lx106-elf-ar
-ESP_TOOL = $(TOOLS_ROOT)/esptool/esptool
+ESP_TOOL = $(TOOLS_ROOT)/esptool/$(ESP_TOOL_VERSION)/esptool
 
-INCLUDE_DIRS += $(SDK_ROOT)/include $(CORE_DIR) $(ESP_ROOT)/variants/generic $(OBJ_DIR)
+INCLUDE_DIRS += $(SDK_ROOT)/include $(CORE_DIR) $(HW_ROOT)/variants/generic $(OBJ_DIR)
 C_DEFINES = -D__ets__ -DICACHE_FLASH -U__STRICT_ANSI__ -DF_CPU=80000000L -DARDUINO=10605 -DARDUINO_ESP8266_ESP01 -DARDUINO_ARCH_ESP8266 -DESP8266
 C_INCLUDES = $(foreach dir,$(INCLUDE_DIRS) $(USER_DIRS),-I$(dir))
 C_FLAGS ?= -c -Os -g -Wpointer-arith -Wno-implicit-function-declaration -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals -falign-functions=4 -MMD -std=gnu99 -ffunction-sections -fdata-sections
@@ -82,7 +88,7 @@ LD_FLAGS ?= -g -w -Os -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-
 LD_STD_LIBS ?= -lm -lgcc -lhal -lphy -lnet80211 -llwip -lwpa -lmain -lpp -lsmartconfig -lwps -lcrypto -laxtls
 
 # Core source files
-CORE_DIR = $(ESP_ROOT)/cores/esp8266
+CORE_DIR = $(HW_ROOT)/cores/esp8266
 CORE_SRC = $(shell find $(CORE_DIR) -name "*.S" -o -name "*.c" -o -name "*.cpp")
 CORE_OBJ = $(patsubst %,$(OBJ_DIR)/%$(OBJ_EXT),$(notdir $(CORE_SRC)))
 CORE_LIB = $(OBJ_DIR)/core.ar
@@ -148,7 +154,7 @@ $(MAIN_EXE): $(CORE_LIB) $(USER_OBJ)
 	echo '_tBuildInfo _BuildInfo = {"$(BUILD_DATE)","$(BUILD_TIME)","$(SRC_GIT_VERSION)","$(ESP_GIT_VERSION)"};' >>$(BUILD_INFO_CPP)
 	$(CPP) $(C_DEFINES) $(C_INCLUDES) $(CPP_FLAGS) $(BUILD_INFO_CPP) -o $(BUILD_INFO_OBJ)
 	$(LD) $(LD_FLAGS) -Wl,--start-group $^ $(BUILD_INFO_OBJ) $(LD_STD_LIBS) -Wl,--end-group -L$(OBJ_DIR) -o $(MAIN_ELF)
-	$(ESP_TOOL) -eo $(ESP_ROOT)/bootloaders/eboot/eboot.elf -bo $@ -bm $(FLASH_MODE) -bf $(FLASH_SPEED) -bz $(FLASH_SIZE) -bs .text -bp 4096 -ec -eo $(MAIN_ELF) -bs .irom0.text -bs .text -bs .data -bs .rodata -bc -ec
+	$(ESP_TOOL) -eo $(HW_ROOT)/bootloaders/eboot/eboot.elf -bo $@ -bm $(FLASH_MODE) -bf $(FLASH_SPEED) -bz $(FLASH_SIZE) -bs .text -bp 4096 -ec -eo $(MAIN_ELF) -bs .irom0.text -bs .text -bs .data -bs .rodata -bc -ec
 	$(TOOLS_BIN)/xtensa-lx106-elf-size -A $(MAIN_ELF) | perl -e $(MEM_USAGE)
 	perl -e 'print "Build complete. Elapsed time: ", time()-$(START_TIME),  " seconds\n\n"'
 
