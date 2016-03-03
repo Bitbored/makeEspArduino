@@ -18,11 +18,7 @@
 #====================================================================================
 
 #=== Project specific definitions: sketch and list of needed libraries
-SKETCH ?= $(ESP_LIBS)/ESP8266WebServer/examples/HelloServer/HelloServer.ino
-LIBS ?= $(ESP_LIBS)/Wire \
-        $(ESP_LIBS)/ESP8266WiFi \
-        $(ESP_LIBS)/ESP8266mDNS \
-        $(ESP_LIBS)/ESP8266WebServer
+SKETCH ?= $(wildcard *.ino)
 
 # Esp8266 Arduino git location
 ESP_ROOT ?= $(HOME)/esp8266
